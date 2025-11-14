@@ -1,15 +1,21 @@
 import torch
 import os
 
-def save_checkpoint(model, optimizer, epoch, path="checkpoints"):
+def save_checkpoint(model, optimizer, epoch, path):
     os.makedirs(path, exist_ok=True)
-    ckpt_path = os.path.join(path, f"epoch_{epoch+1}.pth")
+    ckpt_path = os.path.join(path, f"epoch_{epoch}.pth")
+
+    # Handle both dicts and torch modules
+    model_state = model if isinstance(model, dict) else model.state_dict()
+    optim_state = optimizer if isinstance(optimizer, dict) else optimizer.state_dict()
+
     torch.save({
         "epoch": epoch + 1,
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
+        "model_state_dict": model_state,
+        "optimizer_state_dict": optim_state,
     }, ckpt_path)
-    print(f"✅ Saved checkpoint: {ckpt_path}")
+    print(f"✅ Saved checkpoint at {ckpt_path}")
+
 
 def load_checkpoint(model, optimizer, ckpt_path):
     checkpoint = torch.load(ckpt_path)

@@ -52,15 +52,17 @@ class LineMODDriveMini(Dataset):
             'K': (3,3)
         }
     """
-    def __init__(self, data_root, objects, max_per_obj=200, img_size=256):
+    def __init__(self, data_root, objects, split="train_pbr", max_per_obj=200, img_size=256):
         self.samples = []
         self.img_size = img_size
 
         for obj in objects:
-            obj_dir = os.path.join(data_root, obj)
+            obj_dir = os.path.join(data_root, split, obj)  # <-- include split here
             rgb_dir = os.path.join(obj_dir, "rgb")
             depth_dir = os.path.join(obj_dir, "depth")
             mask_dir = os.path.join(obj_dir, "mask_visib")
+       
+
 
             gt_path = os.path.join(obj_dir, "scene_gt.json")
             cam_path = os.path.join(obj_dir, "scene_camera.json")
