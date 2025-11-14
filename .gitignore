@@ -1,0 +1,71 @@
+
+
+# Geo6D-Lite: Git Ignore File
+
+
+# --- Python cache files ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual environment directories ---
+venv/
+env/
+.venv/
+
+# --- Dataset folders ---
+data/
+datasets/
+LineMOD/
+*.zip
+*.tar
+*.tar.gz
+
+# --- Model checkpoints ---
+*.pth
+*.pt
+checkpoints/
+geo6d_checkpoints/
+saved_models/
+*.ckpt
+
+# --- Logs and temporary outputs ---
+*.log
+*.txt
+
+*.json
+outputs/
+logs/
+runs/
+wandb/
+
+# --- Jupyter and Colab files ---
+*.ipynb_checkpoints
+.ipynb_checkpoints/
+.colab/
+sample_data/
+.DS_Store
+
+# --- System files ---
+Thumbs.db
+desktop.ini
+.env
+.idea/
+.vscode/
+
+# --- Generated plots and figures ---
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+
+# --- Temporary cache ---
+tmp/
+temp/
+__cache__/
+cache/
+
+# --- Auto-saved Colab session files ---
+/content/drive/MyDrive/SharedCheckpoints/datasets/
+
