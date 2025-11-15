@@ -1,4 +1,10 @@
-import os, glob, json, cv2, torch
+
+import os
+import glob
+import json
+import cv2
+import torch
+
 import numpy as np
 from torch.utils.data import Dataset
 
@@ -8,7 +14,7 @@ def list_frames(rgb_dir):
     return [
         int(os.path.splitext(os.path.basename(p))[0])
         for p in sorted(glob.glob(os.path.join(rgb_dir, "*.jpg")))
-        if os.path.basename(p).split('.')[0].isdigit()
+        if os.path.basename(p).split(".")[0].isdigit()
     ]
 
 
@@ -52,7 +58,10 @@ class LineMODDriveMini(Dataset):
             'K': (3,3)
         }
     """
-    def __init__(self, data_root, objects, split="train_pbr", max_per_obj=200, img_size=256):
+
+    def __init__(
+        self, data_root, objects, split="train_pbr", max_per_obj=200, img_size=256
+    ):
         self.samples = []
         self.img_size = img_size
 
@@ -61,13 +70,15 @@ class LineMODDriveMini(Dataset):
             rgb_dir = os.path.join(obj_dir, "rgb")
             depth_dir = os.path.join(obj_dir, "depth")
             mask_dir = os.path.join(obj_dir, "mask_visib")
-       
-
 
             gt_path = os.path.join(obj_dir, "scene_gt.json")
             cam_path = os.path.join(obj_dir, "scene_camera.json")
 
-            if not (os.path.isdir(rgb_dir) and os.path.isfile(gt_path) and os.path.isfile(cam_path)):
+            if not (
+                os.path.isdir(rgb_dir)
+                and os.path.isfile(gt_path)
+                and os.path.isfile(cam_path)
+            ):
                 print(f"[WARN] Skipping {obj} (missing data)")
                 continue
 
@@ -93,14 +104,16 @@ class LineMODDriveMini(Dataset):
                 if not os.path.isfile(rgb):
                     continue
 
-                self.samples.append({
-                    "rgb": rgb,
-                    "depth": depth if os.path.isfile(depth) else None,
-                    "mask": mask if os.path.isfile(mask) else None,
-                    "R": Rm,
-                    "t": t,
-                    "K": K
-                })
+                self.samples.append(
+                    {
+                        "rgb": rgb,
+                        "depth": depth if os.path.isfile(depth) else None,
+                        "mask": mask if os.path.isfile(mask) else None,
+                        "R": Rm,
+                        "t": t,
+                        "K": K,
+                    }
+                )
 
                 used += 1
                 if used >= max_per_obj:
@@ -136,35 +149,53 @@ class LineMODDriveMini(Dataset):
                 x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
                 x1, y1 = max(0, x1), max(0, y1)
                 x2, y2 = min(W0 - 1, x2), min(H0 - 1, y2)
-                img = img[y1:y2+1, x1:x2+1]
+                img = img[y1 : y2 + 1, x1 : x2 + 1]
                 if s.get("depth") and os.path.isfile(s["depth"]):
                     d = cv2.imread(s["depth"], cv2.IMREAD_UNCHANGED).astype(np.float32)
-                    d = d[y1:y2+1, x1:x2+1]
+                    d = d[y1 : y2 + 1, x1 : x2 + 1]
                 else:
                     d = None
                 if mask_full is not None:
-                    mask_crop = mask_full[y1:y2+1, x1:x2+1]
+                    mask_crop = mask_full[y1 : y2 + 1, x1 : x2 + 1]
                 else:
                     mask_crop = None
-                K_adj = adjust_K_for_crop_and_resize(s["K"].astype(np.float32), (x1, y1, x2, y2), out_size=self.img_size)
+                K_adj = adjust_K_for_crop_and_resize(
+                    s["K"].astype(np.float32), (x1, y1, x2, y2), out_size=self.img_size
+                )
             else:
                 K_adj = s["K"].astype(np.float32)
-                d = cv2.imread(s["depth"], cv2.IMREAD_UNCHANGED).astype(np.float32) if s.get("depth") else None
+                d = (
+                    cv2.imread(s["depth"], cv2.IMREAD_UNCHANGED).astype(np.float32)
+                    if s.get("depth")
+                    else None
+                )
                 mask_crop = mask_full
         else:
             K_adj = s["K"].astype(np.float32)
-            d = cv2.imread(s["depth"], cv2.IMREAD_UNCHANGED).astype(np.float32) if s.get("depth") else None
+            d = (
+                cv2.imread(s["depth"], cv2.IMREAD_UNCHANGED).astype(np.float32)
+                if s.get("depth")
+                else None
+            )
             mask_crop = mask_full
 
         # Resize to model input
-        img = cv2.resize(img, (self.img_size, self.img_size), interpolation=cv2.INTER_LINEAR)
+        img = cv2.resize(
+            img, (self.img_size, self.img_size), interpolation=cv2.INTER_LINEAR
+        )
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
 
         if d is not None:
-            d = cv2.resize(d, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
+            d = cv2.resize(
+                d, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST
+            )
             depth_t = torch.from_numpy(d[None]).float()
         if mask_crop is not None:
-            mask_crop = cv2.resize(mask_crop, (self.img_size, self.img_size), interpolation=cv2.INTER_NEAREST)
+            mask_crop = cv2.resize(
+                mask_crop,
+                (self.img_size, self.img_size),
+                interpolation=cv2.INTER_NEAREST,
+            )
             mask_t = torch.from_numpy(mask_crop[None]).float()
 
         return {

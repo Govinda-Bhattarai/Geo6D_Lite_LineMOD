@@ -4,7 +4,9 @@
 # Core deep learning libraries
 torch>=2.1.0
 torchvision>=0.16.0
-numpy>=1.26.0
+
+# Restrict numpy to avoid conflicts with TF/Streamlit/Numba
+numpy>=1.26.0,<2.0.0
 scipy>=1.11.0
 
 # Image and visualization
