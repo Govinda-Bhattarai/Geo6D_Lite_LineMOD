@@ -32,6 +32,7 @@ saved_models/
 # --- Logs and temporary outputs ---
 *.log
 *.txt
+!requirements.txt   # ← allow this specific file
 
 *.json
 outputs/
