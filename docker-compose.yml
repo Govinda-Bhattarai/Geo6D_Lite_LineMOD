@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  geo6d-lite:
+    build: .
+    container_name: geo6d-lite-api
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+      - ./datasets:/app/datasets:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

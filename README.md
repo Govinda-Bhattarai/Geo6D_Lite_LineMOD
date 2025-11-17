@@ -57,11 +57,76 @@ venv\Scripts\activate      # On Windows
 
 Download the LineMOD dataset (from BOP Benchmark) and extract it under:
 
-    /content/drive/MyDrive/SharedCheckpoints/datasets/LineMOD/lm/
+    datasets/Linemod_preprocessed/data/{object_id}/
 
-You can modify this path in config.py or pass it directly via --data_root.
+The dataset structure should match the paths defined in `config.py` using `cfg.get_linemod_paths(object_id)`.
 
-Usage
+---
+
+## Verification & Testing
+
+Before training, it's recommended to verify that all modules are working correctly and the dataset loads properly.
+
+### Quick Dataset Test
+
+Test dataset loading quickly:
+
+```bash
+python quick_dataset_test.py [object_id]
+```
+
+Example:
+```bash
+python quick_dataset_test.py 05
+```
+
+This will:
+- Check if all dataset paths exist
+- Load a few samples from train/test splits
+- Verify sample structure and shapes
+- Test DataLoader integration
+
+### Comprehensive Setup Verification
+
+Run the full verification suite to test all components:
+
+```bash
+python verify_setup.py
+```
+
+This comprehensive test checks:
+1. ✅ **Module Imports** - All required modules can be imported
+2. ✅ **Config Structure** - Config paths and functions are correct
+3. ✅ **Dataset Paths** - All dataset directories and files exist
+4. ✅ **Dataset Loading** - Dataset can load samples correctly
+5. ✅ **Model Components** - Backbone and model forward pass works
+6. ✅ **Integration** - End-to-end data flow from dataset → model → loss
+7. ✅ **Checkpoint I/O** - Checkpoints can be saved and loaded
+
+**Expected Output:**
+```
+🔍 Geo6D-Lite Setup Verification
+============================================================
+
+TEST 1: Module Imports
+✅ Imported config.cfg
+✅ Imported dataset.LineMODDriveMini
+...
+
+SUMMARY
+✅ Module Imports: PASSED
+✅ Config Structure: PASSED
+...
+Results: 7/7 tests passed
+
+🎉 All tests passed! Your setup is ready for training.
+```
+
+If any tests fail, the script will provide detailed error messages to help you fix the issues.
+
+---
+
+## Usage
  Train from Scratch
       python main.py --mode train
 

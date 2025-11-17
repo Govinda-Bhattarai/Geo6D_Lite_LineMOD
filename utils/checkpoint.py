@@ -1,19 +1,27 @@
 import torch
 import os
 
-def save_checkpoint(model, optimizer, epoch, path):
+def save_checkpoint(model, optimizer, epoch, path, scheduler=None):
     os.makedirs(path, exist_ok=True)
     ckpt_path = os.path.join(path, f"epoch_{epoch}.pth")
+    latest_path = os.path.join(path, "geo6d_lite_latest.pth")
 
     # Handle both dicts and torch modules
     model_state = model if isinstance(model, dict) else model.state_dict()
     optim_state = optimizer if isinstance(optimizer, dict) else optimizer.state_dict()
 
-    torch.save({
+    checkpoint = {
         "epoch": epoch + 1,
         "model_state_dict": model_state,
         "optimizer_state_dict": optim_state,
-    }, ckpt_path)
+    }
+    
+    # Save scheduler state if provided
+    if scheduler is not None:
+        checkpoint["scheduler_state_dict"] = scheduler.state_dict()
+
+    torch.save(checkpoint, ckpt_path)
+    torch.save(checkpoint, latest_path)  # Also save as latest
     print(f"✅ Saved checkpoint at {ckpt_path}")
 
 

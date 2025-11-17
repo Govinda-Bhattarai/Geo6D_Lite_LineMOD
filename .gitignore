@@ -13,13 +13,16 @@ venv/
 env/
 .venv/
 
-# --- Dataset folders ---
+# --- Dataset folders & large artifacts ---
 data/
 datasets/
 LineMOD/
 *.zip
 *.tar
 *.tar.gz
+*.npz
+*.npy
+*.pkl
 
 # --- Model checkpoints ---
 *.pth
@@ -31,14 +34,23 @@ saved_models/
 
 # --- Logs and temporary outputs ---
 *.log
-*.txt
-!requirements.txt
-
-*.json
+training.log
+training_output.log
+eval_output.log
 outputs/
 logs/
 runs/
 wandb/
+*.json
+*.csv
+*.tmp
+*.bak
+
+# --- Test / coverage artifacts ---
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # --- Jupyter and Colab files ---
 *.ipynb_checkpoints
@@ -53,6 +65,8 @@ desktop.ini
 .env
 .idea/
 .vscode/
+Geo6D_Lite_LineMOD.code-workspace
+.history/
 
 # --- Generated plots and figures ---
 *.png
@@ -60,6 +74,7 @@ desktop.ini
 *.jpeg
 *.pdf
 *.svg
+visualizations/
 
 # --- Temporary cache ---
 tmp/
@@ -69,4 +84,16 @@ cache/
 
 # --- Auto-saved Colab session files ---
 /content/drive/MyDrive/SharedCheckpoints/datasets/
+
+# --- Build artifacts ---
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+*.egg
+
+# --- Editors ---
+*.swp
+*.swo
+*.orig
 
