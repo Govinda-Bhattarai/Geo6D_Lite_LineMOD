@@ -1,207 +1,164 @@
 
-#  Geo6D-Lite: Lightweight 6D Pose Estimation on LineMOD
+# Geo6D-Lite — 6D Pose Estimation on LineMOD
 
-A modular and lightweight implementation of **6D pose estimation** using the [LineMOD dataset](https://bop.felk.cvut.cz/datasets/).  
-Built for research, student projects, and fast experimentation in Google Colab.
+Geo6D-Lite is a research-friendly implementation of a modern 6D pose pipeline for LineMOD.  
+It couples a multi-scale ResNet backbone with a Geo6D pose head, dense geometric features,
+and production-ready inference scripts for evaluation, CLI use, and a REST API.
 
 ---
 
-## Project Structure
+## Highlights
+- **Architecture**: ResNet34 backbone with multi-scale fusion + residual Geo6D head (6 residual blocks, confidence-weighted pooling).
+- **Geometric channels**: 12-channel tensor (pixel coords, normalized coords, normalized XYZ, centered XYZ, distance features).
+- **Losses**: Geodesic rotation + L1 translation with optional dense supervision and reprojection.
+- **Tooling**: Unified trainer (`main.py`), evaluation runner (`evaluate.py`), CLI inference (`infer.py`), API server (`api_server.py`), Dockerfile, and monitoring utilities in `tools/`.
+- **Deployment**: Standalone inference wrapper (`inference.py`), FastAPI-compatible Flask server, Docker + docker-compose definitions.
 
+---
+
+## Repository Layout
+```
 Geo6D_Lite_LineMOD/
-├── config.py # Central configuration (model, training, loss weights)
-├── dataset.py # LineMOD dataset loader with cropping + intrinsics correction
-├── geo6d_model.py # Main model wrapper (combines backbone + head)
-├── main.py # Unified entry point (train / eval)
-├── train.py # Minimal training version
-├── train_resume.py # Resume training from checkpoint
-├── evaluate.py # Standalone evaluation script (optional)
-│
+├── config.py                  # Hyperparameters & dataset helper
+├── dataset.py                 # LineMOD loader (crop, intrinsics fix, augmentation)
+├── main.py                    # Training & eval entry point
+├── evaluate.py                # Standalone evaluation CLI
+├── infer.py                   # Convenience wrapper around evaluate.py thresholds
+├── inference.py               # Production PoseEstimator class (RGB+depth+K+mask)
+├── api_server.py              # REST API using PoseEstimator
+├── Dockerfile / docker-compose.yml
 ├── models/
-│ ├── backbone.py # ResNet-based feature extractor
-│ ├── pose_head.py # Rotation & translation prediction head
-│ ├── losses.py # Loss functions (geodesic, L1)
-│ └── rot6d.py # Rotation representation conversion (6D → matrix)
-│
-├── utils/
-│ ├── checkpoint.py # Save & load model checkpoints
-│ ├── image_utils.py # Bounding box + intrinsics utilities
-│ └── metrics.py # Rotation / translation error metrics
-│
-└── data/ # (Optional) Dataset preprocessing or augmentations
-
+│   ├── backbone.py            # ResNet18/34 with multi-scale fusion
+│   ├── pose_head.py           # Residual Geo6D head + dense outputs
+│   ├── losses.py              # Geodesic / L1 / reprojection / dense losses
+│   └── rot6d.py               # 6D rotation utilities
+├── utils/                     # Augmentation, checkpoints, metrics, model points
+├── tools/                     # Monitoring & helper scripts
+└── checkpoints/               # (git-ignored) training artifacts
+```
 
 ---
 
-##  Setup Instructions
-
-### 1 Clone the Repository
+## Installation
 ```bash
 git clone https://github.com/Govinda-Bhattarai/Geo6D_Lite_LineMOD.git
 cd Geo6D_Lite_LineMOD
 
-## Environment Setup
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-Create and activate a virtual environment:
-
-```bash
-python -m venv venv
-source venv/bin/activate   # On Mac/Linux
-venv\Scripts\activate      # On Windows
-
-##Install Dependencies
-
-    pip install -r requirements.txt
-
-##Dataset Setup
-
-Download the LineMOD dataset (from BOP Benchmark) and extract it under:
-
-    datasets/Linemod_preprocessed/data/{object_id}/
-
-The dataset structure should match the paths defined in `config.py` using `cfg.get_linemod_paths(object_id)`.
+### Dataset
+Download the preprocessed LineMOD split (BOP format) and place it under:
+```
+datasets/Linemod_preprocessed/data/<object_id>/
+```
+`dataset.py` automatically builds paths via `cfg.get_linemod_paths(object_id)` so the default structure works out of the box. Depth values must stay in meters (loader already converts from millimeters).
 
 ---
 
-## Verification & Testing
-
-Before training, it's recommended to verify that all modules are working correctly and the dataset loads properly.
-
-### Quick Dataset Test
-
-Test dataset loading quickly:
-
+## Training & Evaluation
 ```bash
-python quick_dataset_test.py [object_id]
+# Train from scratch on object 05
+python main.py --mode train --object_ids 05
+
+# Resume with optional checkpoint path (default is cfg.DEFAULT_CHECKPOINT)
+python main.py --mode train --object_ids 05 --resume checkpoints/epoch_15.pth
+
+# Evaluate a checkpoint
+python main.py --mode eval --object_ids 05 --checkpoint checkpoints/epoch_35.pth
 ```
 
-Example:
+`main.py` handles:
+- Warmup + StepLR / Cosine schedulers
+- Gradient clipping and optional LR boosts
+- Automatic model-point loading for reprojection
+- Logging to `checkpoints/train_log.json` and per-epoch checkpoints
+
+### Quick evaluation helper
 ```bash
-python quick_dataset_test.py 05
+# Sweeps thresholds (rotation in degrees, translation in cm)
+python infer.py --object_ids 05 --checkpoint checkpoints/epoch_35.pth \
+  --rotation_threshold 10 --translation_threshold 10
 ```
 
-This will:
-- Check if all dataset paths exist
-- Load a few samples from train/test splits
-- Verify sample structure and shapes
-- Test DataLoader integration
-
-### Comprehensive Setup Verification
-
-Run the full verification suite to test all components:
-
+### Standalone evaluate script
 ```bash
-python verify_setup.py
+python evaluate.py --object_ids 05 --checkpoint checkpoints/epoch_35.pth \
+  --rot_thresh 10 --trans_thresh 0.10
 ```
-
-This comprehensive test checks:
-1. ✅ **Module Imports** - All required modules can be imported
-2. ✅ **Config Structure** - Config paths and functions are correct
-3. ✅ **Dataset Paths** - All dataset directories and files exist
-4. ✅ **Dataset Loading** - Dataset can load samples correctly
-5. ✅ **Model Components** - Backbone and model forward pass works
-6. ✅ **Integration** - End-to-end data flow from dataset → model → loss
-7. ✅ **Checkpoint I/O** - Checkpoints can be saved and loaded
-
-**Expected Output:**
-```
-🔍 Geo6D-Lite Setup Verification
-============================================================
-
-TEST 1: Module Imports
-✅ Imported config.cfg
-✅ Imported dataset.LineMODDriveMini
-...
-
-SUMMARY
-✅ Module Imports: PASSED
-✅ Config Structure: PASSED
-...
-Results: 7/7 tests passed
-
-🎉 All tests passed! Your setup is ready for training.
-```
-
-If any tests fail, the script will provide detailed error messages to help you fix the issues.
 
 ---
 
-## Usage
- Train from Scratch
-      python main.py --mode train
+## Inference & Deployment
 
- Resume Training
-      python main.py --mode train --resume
+### PoseEstimator class
+```python
+from inference import PoseEstimator
+import numpy as np
 
- Evaluate a Model
-      python main.py --mode eval
+estimator = PoseEstimator("checkpoints/epoch_35.pth", object_id="05")
+rgb   = np.random.rand(256,256,3).astype("float32")
+depth = np.ones((256,256), dtype="float32")
+rot6d, trans, R = estimator.predict(rgb, depth)
+```
 
-  Outputs
+### REST API
+```bash
+python api_server.py --checkpoint checkpoints/epoch_35.pth --object_id 05 --port 5000
 
-After running training/evaluation, the following files are automatically saved in:
+curl -X POST http://localhost:5000/predict \
+  -F image=@path/to/rgb.png \
+  -F depth=@path/to/depth.png \
+  -F mask=@path/to/mask.png \
+  -F fx=572.4114 -F fy=573.5704 -F cx=325.2611 -F cy=242.0489
+```
+- Endpoints: `/health`, `/info`, `/predict`
+- Requires RGB + depth; intrinsics optional (falls back to dataset defaults).
 
-/content/drive/MyDrive/SharedCheckpoints/geo6d_checkpoints/
+### Docker
+```bash
+docker build -t geo6d-lite .
+docker run -p 5000:5000 geo6d-lite
+# or
+docker-compose up -d
+```
 
+---
 
-| File                          | Description                             |
-| ----------------------------- | --------------------------------------- |
-| `epoch_*.pth`                 | Model checkpoints per epoch             |
-| `train_log.json`              | Average loss history                    |
-| `eval_results.json`           | Evaluation metrics                      |
-| `evaluation_histograms.png`   | Rotation & translation error histograms |
-| `rotation_vs_translation.png` | Scatter plot comparing both errors      |
+## Tools & Utilities
+- `verify_setup.py`: sanity-check imports, dataset paths, model forward pass.
+- `tools/monitor_accuracy.py`: simple accuracy tracking over training.
+- `tools/run_small_train.py`: short sanity training run.
+- `visualize_dataset.py`, `visualize_results.py`: quick inspection scripts.
 
+---
 
-Model Overview
+## Model At a Glance
+| Component        | Details                                              |
+|-----------------|------------------------------------------------------|
+| Backbone        | ResNet34 (optional ResNet18) with multi-scale fusion |
+| Pose head       | 6 residual blocks, confidence-weighted pooling       |
+| Rotation        | Ortho6D → rotation matrix (Zhou et al. CVPR 2019)    |
+| Translation     | Dense translation map + weighted pooling             |
+| Losses          | Geodesic rot + L1 trans (+ optional reproj/dense)    |
+| Optimizer       | AdamW + warmup + StepLR/Cosine                        |
 
-Backbone: ResNet18 (pretrained on ImageNet)
+Best checkpoints are stored under `checkpoints/` (ignored by git). Track your own metrics inside `FINAL_RESULTS.md` or similar, but strip sensitive data before publishing.
 
-Head: Fully connected layers for 6D pose regression
+---
 
-Rotation Representation: Ortho6D → 3*3 rotation matrix
+## Contributing / Customizing
+- Adjust hyperparameters in `config.py` (feat_dim, loss weights, scheduler).
+- Extend dataset loader for multi-object training by passing more IDs.
+- Export ONNX / TensorRT by reusing the `PoseEstimator` forward method.
 
-Loss: Combined Geodesic + L1 translation
+PRs that improve training stability, evaluation tooling, or deployment recipes are welcome.
 
-Optimizer: AdamW + Cosine Annealing LR
+---
 
-Example Results
-
-| Metric                 | Description                   |
-| ---------------------- | ----------------------------- |
-| Mean Rotation Error    | Average angular deviation (°) |
-| Mean Translation Error | Average position error (cm)   |
-
-Visualized automatically after evaluation:
-
-    evaluation_histograms.png
-    rotation_vs_translation.png
-
-Directory Notes
-
-| Folder                     | Purpose                                                  |
-| -------------------------- | -------------------------------------------------------- |
-| `models/`                  | Neural network components                                |
-| `utils/`                   | Helper functions (checkpointing, metrics, visualization) |
-| `data/`                    | (Optional) Dataset preparation or augmentation           |
-| `Geo6D_Lite_LineMOD.ipynb` | Colab notebook version (optional)                        |
-
-
-Checkpoint Example
-
-  /content/drive/MyDrive/SharedCheckpoints/geo6d_checkpoints/geo6d_lite_latest.pth
-
-You can modify this path in:
-
-  main.py argument --checkpoint
-  or in your Colab cell directly.
-
-
-References
-
-BOP Benchmark: LineMOD Dataset
-
-Ortho6D Rotation Representation (Zhou et al., CVPR 2019)
-
-PyTorch Documentation
-
-
+## References
+- LineMOD dataset — BOP Benchmark
+- Ortho6D rotation representation — Zhou et al., CVPR 2019
+- PyTorch documentation for model / optimizer APIs
