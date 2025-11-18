@@ -13,8 +13,11 @@ Successfully improved pose estimation accuracy from **4%** (initial, epoch 40 of
 | **Overall Accuracy** | 77.42% (926/1196) | ✅ BEST |
 | **Rotation Accuracy** | 81.86% (979/1196) | ✅ Exceeds threshold |
 | **Translation Accuracy** | 94.57% (1131/1196) | ✅ Excellent |
+| **ADD Accuracy (10cm)** | 87.12% (1042/1196) | ✅ Excellent |
 | Mean Rotation Error | 6.93° | ✅ Below 10° |
 | Mean Translation Error | 5.15 cm | ✅ Below 10 cm |
+| Mean ADD Score | 6.65 cm | ✅ Below 10 cm |
+| Median ADD Score | 6.11 cm | ✅ Below 10 cm |
 
 ### Model Configuration
 
@@ -78,6 +81,7 @@ Batch Size: 8
 - **Config**: `config.py` (final hyperparameters)
 
 ## Recommendations for Future Work
+
 1. **Dataset expansion**: Current dataset (1196 samples) may be limiting further gains
 2. **Fine-tuning**: Transfer learning from COCO or other pose datasets
 3. **Ensemble methods**: Combine multiple checkpoints for robustness
@@ -85,13 +89,24 @@ Batch Size: 8
 5. **Advanced augmentation**: Consider more aggressive aug strategies (cutout, mixup, etc.)
 
 ## Usage
+
 ```bash
-# Evaluate best model
+# Evaluate best model (rotation/translation thresholds)
 python3 evaluate.py --object_ids 05 --checkpoint checkpoints/epoch_39.pth
+
+# Evaluate using ADD score (Average Distance of model points)
+python3 evaluate_add.py --object_ids 05 --checkpoint checkpoints/epoch_39.pth --add_thresh 0.10
 
 # Use for inference
 python3 main.py --mode eval --object_ids 05 --checkpoint checkpoints/epoch_39.pth
 ```
+
+### Evaluation Metrics Explained
+
+- **Overall Accuracy**: Percentage of samples with both rotation error ≤ 10° and translation error ≤ 10 cm
+- **Rotation Accuracy**: Percentage of samples with rotation error ≤ 10°
+- **Translation Accuracy**: Percentage of samples with translation error ≤ 10 cm
+- **ADD Accuracy**: Percentage of samples with ADD (Average Distance of model points) ≤ 10 cm. ADD measures the average distance between transformed model points using predicted vs. ground truth poses, which is a standard metric in 6D pose estimation benchmarks.
 
 ---
 **Training completed**: 2025-11-17

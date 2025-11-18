@@ -11,7 +11,7 @@ and production-ready inference scripts for evaluation, CLI use, and a REST API.
 - **Architecture**: ResNet34 backbone with multi-scale fusion + residual Geo6D head (6 residual blocks, confidence-weighted pooling).
 - **Geometric channels**: 12-channel tensor (pixel coords, normalized coords, normalized XYZ, centered XYZ, distance features).
 - **Losses**: Geodesic rotation + L1 translation with optional dense supervision and reprojection.
-- **Tooling**: Unified trainer (`main.py`), evaluation runner (`evaluate.py`), CLI inference (`infer.py`), API server (`api_server.py`), Dockerfile, and monitoring utilities in `tools/`.
+- **Tooling**: Unified trainer (`main.py`), evaluation runners (`evaluate.py`, `evaluate_add.py`), CLI inference (`infer.py`), API server (`api_server.py`), Dockerfile, and monitoring utilities in `tools/`.
 - **Deployment**: Standalone inference wrapper (`inference.py`), FastAPI-compatible Flask server, Docker + docker-compose definitions.
 
 ---
@@ -22,7 +22,8 @@ Geo6D_Lite_LineMOD/
 ├── config.py                  # Hyperparameters & dataset helper
 ├── dataset.py                 # LineMOD loader (crop, intrinsics fix, augmentation)
 ├── main.py                    # Training & eval entry point
-├── evaluate.py                # Standalone evaluation CLI
+├── evaluate.py                # Standalone evaluation CLI (rotation/translation thresholds)
+├── evaluate_add.py            # Evaluation using ADD (Average Distance of model points) score
 ├── infer.py                   # Convenience wrapper around evaluate.py thresholds
 ├── inference.py               # Production PoseEstimator class (RGB+depth+K+mask)
 ├── api_server.py              # REST API using PoseEstimator
@@ -85,8 +86,13 @@ python infer.py --object_ids 05 --checkpoint checkpoints/epoch_35.pth \
 
 ### Standalone evaluate script
 ```bash
+# Evaluate using rotation/translation thresholds
 python evaluate.py --object_ids 05 --checkpoint checkpoints/epoch_35.pth \
   --rot_thresh 10 --trans_thresh 0.10
+
+# Evaluate using ADD (Average Distance of model points) score
+python evaluate_add.py --object_ids 05 --checkpoint checkpoints/epoch_35.pth \
+  --add_thresh 0.10
 ```
 
 ---
@@ -129,6 +135,8 @@ docker-compose up -d
 
 ## Tools & Utilities
 - `verify_setup.py`: sanity-check imports, dataset paths, model forward pass.
+- `evaluate.py`: evaluation using rotation/translation thresholds.
+- `evaluate_add.py`: evaluation using ADD (Average Distance of model points) score.
 - `tools/monitor_accuracy.py`: simple accuracy tracking over training.
 - `tools/run_small_train.py`: short sanity training run.
 - `visualize_dataset.py`, `visualize_results.py`: quick inspection scripts.
